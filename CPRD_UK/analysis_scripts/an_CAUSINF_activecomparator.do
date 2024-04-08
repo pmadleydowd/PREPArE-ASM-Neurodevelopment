@@ -7,7 +7,6 @@ log using "$Logdir\NDD study\LOG_an_CAUSINF_activecomparator.txt", text replace
 ********************************************************************************
 * Notes on major updates (Date - description):
 ********************************************************************************
-* 11 Oct 2023 - PMD: updated to be run using flexible parametric model 
 
 ********************************************************************************
 * Output datasets 

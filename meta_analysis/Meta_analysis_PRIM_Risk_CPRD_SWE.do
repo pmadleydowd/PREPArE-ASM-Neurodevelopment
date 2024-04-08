@@ -41,8 +41,9 @@ foreach ndd in ASD ID ADHD {
 }
 
 
-import excel "C:\Users\pm0233\University of Bristol\grp-PREPArE - Manuscripts\asm-ndd combining\Results 2023-11-16.xlsx", sheet("risks and cis") firstrow clear
-destring _all, replace
+use "C:\Users\pm0233\University of Bristol\grp-PREPArE - Manuscripts\asm-ndd combining\std_update.dta", clear
+drop Diff* _*
+
 local i = 0
 foreach drug in No_ASM Carbamazepine Gabapentin Lamotrigine Levetiracetam Phenytoin Pregabalin Topiramate Valproic_acid Other_ASM Polytherapy  {
 		rename `drug'_asd  		ASD`i'
@@ -88,7 +89,7 @@ replace NDD_n = 3 if NDD == "ADHD"
 replace risk = . if n_exp_wNDD == 0  
 replace risk_lci = . if risk == .  
 replace risk_uci = . if risk == . 
-gen meta_exclude = 1 if n_exp_wNDD <=3  
+gen meta_exclude = . /*1 if n_exp_wNDD <=3*/  
 
 sort ASM_n NDD_n time country 
 order NDD ASM time country  risk risk_lci risk_uci
@@ -137,7 +138,9 @@ drop country
 reshape wide wgt, i(ASM_n NDD_n time) j(country_n)
 gen dohad = round(100*wgt2,0.1)
 sort time  NDD_n ASM_n
-
+keep ASM_n NDD_n time dohad
+reshape wide dohad, i(ASM_n NDD_n) j(time)
+sort NDD_n ASM_n
 ********************************************************************************
 * 3 - meta-analysis
 * https://bmcmedresmethodol.biomedcentral.com/articles/10.1186/s12874-015-0024-z
@@ -147,7 +150,7 @@ sort time  NDD_n ASM_n
 foreach NDD in ASD ADHD ID {
 	forvalues time = 4(4)12 {
 		use "$Datadir\NDD_study_PMD\Outputs\Primary\NDD_prim_risk_metaready", clear
-		metan log_risk log_risk_lci log_risk_uci if NDD=="`NDD'" & time == `time' & meta_exclude != 1, by(ASM_n) sortby(country) lcols(country) nooverall 		
+		metan log_risk log_risk_lci log_risk_uci if NDD=="`NDD'" & time == `time' & meta_exclude != 1, by(ASM_n) sortby(country) lcols(country) nooverall keeporder		
 		clear
 		set obs 11
 		gen ASM = ""
@@ -191,6 +194,9 @@ gen str_prev_CI = strofreal(prev, "%5.2f") + " (" + strofreal(prev_lci , "%5.2f"
 
 save "$Datadir\NDD_study_PMD\Outputs\Primary\NDD_primrisk_metan_graphready.dta", replace
 
+keep time ASM_n NDD_n country_n str_prev_CI
+reshape wide str_prev_CI, i(ASM_n NDD_n country_n) j(time)
+sort NDD_n country_n ASM_n 
 ********************************************************************************
 * 4 - Produce bar plots for risk at each age in each country 
 ********************************************************************************
@@ -208,12 +214,12 @@ replace ASM = "{bf:" + ASM + "}"
 bysort NDD_n time (ASM_n): gen x_pos = _n-1
 replace x_pos = 0  if ASM=="{bf:No ASM}"
 replace x_pos = 1  if ASM=="{bf:Pregabalin}"
-replace x_pos = 2  if ASM=="{bf:Levetiracetam}"
+replace x_pos = 2  if ASM=="{bf:Phenytoin}"
 replace x_pos = 3  if ASM=="{bf:Lamotrigine}"
-replace x_pos = 4  if ASM=="{bf:Phenytoin}"
+replace x_pos = 4  if ASM=="{bf:Levetiracetam}"
 replace x_pos = 5  if ASM=="{bf:Topiramate}"
-replace x_pos = 6  if ASM=="{bf:Other}"
-replace x_pos = 7  if ASM=="{bf:Carbamazepine}"
+replace x_pos = 6  if ASM=="{bf:Carbamazepine}"
+replace x_pos = 7  if ASM=="{bf:Other}"
 replace x_pos = 8  if ASM=="{bf:Gabapentin}"
 replace x_pos = 9  if ASM=="{bf:Polytherapy}"
 replace x_pos = 10 if ASM=="{bf:Valproate}"

@@ -43,8 +43,7 @@ foreach ndd in ASD ID ADHD {
 }
 
 
-import excel "C:\Users\pm0233\University of Bristol\grp-PREPArE - Manuscripts\asm-ndd combining\Results 2023-11-16.xlsx", sheet("risk differences and cis") firstrow clear
-destring _all, replace
+use "C:\Users\pm0233\University of Bristol\grp-PREPArE - Manuscripts\asm-ndd combining\std_update.dta", clear
 local i = 1
 foreach drug in Carbamazepine Gabapentin Lamotrigine Levetiracetam Phenytoin Pregabalin Topiramate Valproic_acid Other_ASM Polytherapy  {
 		rename Diff_`drug'_asd  		ASD`i'
@@ -58,6 +57,7 @@ foreach drug in Carbamazepine Gabapentin Lamotrigine Levetiracetam Phenytoin Pre
 		rename Diff_`drug'_adhd_uci 	ADHD_uci`i'		
 		local i = `i' + 1
 }
+keep ASD* ID* ADHD* time* 
 reshape long ASD ASD_lci ASD_uci ID ID_lci ID_uci ADHD ADHD_lci ADHD_uci , i(time) j(ASM_n)
 merge m:1 ASM_n using "$Datadir\NDD_study_PMD\Outputs\Primary\monother_labels.dta", keepusing(ASM_n label)
 keep if _merge ==3
@@ -94,7 +94,7 @@ gen ASM = label
 replace RiskDiff = . if n_exp_wNDD == 0  
 replace RiskDiff_lci = . if RiskDiff == .  
 replace RiskDiff_uci = . if RiskDiff == . 
-gen meta_exclude = 1 if n_exp_wNDD <=3  
+gen meta_exclude = . /*1 if n_exp_wNDD <=3  */
 
 sort ASM_n NDD_n time country 
 order NDD ASM time country  RiskDiff RiskDiff_lci RiskDiff_uci
@@ -139,6 +139,9 @@ drop country
 reshape wide wgt, i(ASM_n NDD_n time) j(country_n)
 gen dohad = round(100*wgt2,0.1)
 sort time  NDD_n ASM_n
+keep ASM_n NDD_n time dohad
+reshape wide dohad, i(ASM_n NDD_n) j(time)
+sort NDD_n ASM_n
 
 ********************************************************************************
 * 3 - meta-analysis
@@ -149,7 +152,7 @@ sort time  NDD_n ASM_n
 foreach NDD in ASD ID ADHD {
 	forvalues time = 4(4)12 {
 		use "$Datadir\NDD_study_PMD\Outputs\Primary\NDD_prim_riskDiff_metaready", clear
-		metan RiskDiff RiskDiff_lci RiskDiff_uci if NDD=="`NDD'" & time == `time' & meta_exclude != 1, by(ASM_n) sortby(country) lcols(country) nooverall 		
+		metan RiskDiff RiskDiff_lci RiskDiff_uci if NDD=="`NDD'" & time == `time' & meta_exclude != 1, by(ASM_n) sortby(country) lcols(country) nooverall 	keeporder		
 		clear
 		set obs 10
 		gen ASM = ""
@@ -193,6 +196,9 @@ gen str_prevDiff_CI = strofreal(prevDiff, "%5.2f") + " (" + strofreal(prevDiff_l
 
 save "$Datadir\NDD_study_PMD\Outputs\Primary\NDD_prim_riskDiff_metan_graphready.dta", replace
 
+keep time ASM_n NDD_n country_n str_prevDiff_CI
+reshape wide str_prevDiff_CI, i(ASM_n NDD_n country_n) j(time)
+sort NDD_n country_n ASM_n 
 ********************************************************************************
 * 4 - Produce plots for risk difference at each age 
 ********************************************************************************

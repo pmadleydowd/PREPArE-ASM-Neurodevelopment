@@ -49,13 +49,13 @@ replace adj_HR = . if n_exp_wNDD == 0
 replace adj_HRlci = . if adj_HR == . 
 replace adj_HRuci = . if adj_HR == . 
 replace adj_logHRse = . if adj_HR == . 
-gen meta_exclude = 1 if n_exp_wNDD <=3  
+gen meta_exclude = . /*1 if n_exp_wNDD <=3 */ 
 replace label = "Pregabalin" if label == "Pregbalin"
 
 replace adj_logHR = log(adj_HR) if country == "CPRD (UK)"
 sort ASM_n NDD_n country 
 
-drop if ASM_n == 0 
+*drop if ASM_n == 0 
 
 gen ASM = "{bf:" + label + "}"
 bys ASM_n: egen wAverage = total(adj_logHR)
@@ -167,14 +167,14 @@ replace adj_HR = . if n_exp_wNDD == 0
 replace adj_HRlci = . if adj_HR == . 
 replace adj_HRuci = . if adj_HR == . 
 replace adj_logHRse = . if adj_HR == . 
-gen meta_exclude = 1 if n_exp_wNDD <=3  
+gen meta_exclude = . /*1 if n_exp_wNDD <=3*/  
 
 replace label = "Pregabalin" if label == "Pregbalin"
 
 replace adj_logHR = log(adj_HR) if country == "CPRD (UK)"
 sort ASM_n NDD_n country 
 
-drop if ASM_n == 3 
+*drop if ASM_n == 3 
 
 replace label = "No ASM" if label == "No ASM exposure"
 gen ASM = "{bf:" + label + "}"
@@ -278,15 +278,28 @@ foreach ndd in "ASD" "ID" "ADHD" {
 	drop if _merge == 2 
 	keep if inlist(country, "Combined")
 
-	sort ASM_n
+	insobs 1, before(1)
+	replace adj_HR = 1 if _n ==1 
+	replace adj_HRlci = 1 if _n ==1 
+	replace adj_HRuci = 1 if _n ==1 
+	replace ASM = "{bf:No ASM}" if _n == 1
+	replace country = "Combined" if _n == 1	
 	drop ASM_n
 	sencode ASM, gen(ASM_n)
+
 	sencode country, gen(country_n)
 	sort ASM_n country_n 
 	order ASM country_n 
 
 	keep ASM* country* NDD adj_HR* wgt 
-
+	
+	* update label for phenytoin and remove combined estimates for Autism and ADHD
+	replace ASM = "{bf:Phenytoin*}" if ASM == "{bf:Phenytoin}" 
+	if "`ndd'" == "ASD" | "`ndd'" == "ADHD" { 
+		replace adj_HR 		= . if ASM == "{bf:Phenytoin*}"
+		replace adj_HRlci 	= . if ASM == "{bf:Phenytoin*}"
+		replace adj_HRuci 	= . if ASM == "{bf:Phenytoin*}"
+	}
 
 	* Add additional rows
 	gen obsorder = _n
@@ -295,6 +308,8 @@ foreach ndd in "ASD" "ID" "ADHD" {
 
 	* add character versions of numeric variables - added as not available for combined 
 	gen adj_HR_str = "" + strofreal(adj_HR,"%5.2f") + "" if adj_HR != . 
+	replace adj_HR_str =  "" + strofreal(adj_HR,"%5.2f") + " (Reference)" if ASM_n == 1 & adj_HR != . 
+	
 	gen wgt_str = strofreal(100*wgt, "%5.1f") + "%"  if wgt !=.			   
 
 	* Remove data for additional rows or where estimate not possible
@@ -356,16 +371,16 @@ foreach ndd in "ASD" "ID" "ADHD" {
 		, ///
 		xline(1, lp(-) lcol(gray))  											///
 		xscale(log  range(0.18 8)) ///		
-		xlab(0.2 "0.2" 0.5 "0.5" 1 2 5, nogrid labsize(2.5) format(%9.1f) tlength(0.8)) ///
+		xlab(0.2 "0.2" 0.5 "0.5" 1 2 5 , nogrid labsize(2.5) format(%9.1f) tlength(0.8)) ///
 		xtitle("Within-family HR (95%CI)", size(2.5))  ///
-		ylab(none) ytitle("") yscale(lcolor(none) range(.5 11))	///
+		ylab(none) ytitle("") yscale(lcolor(none) range(.5 12))	///
 		graphregion(color(white) margin(zero) lcolor(black) lwidth(zero) fcolor(none))  ///
 		plotregion(margin(none) lcolor(black) lwidth(zero) fcolor(none)) ///
 		legend(off) ///
 		 fxsize(150) ///
 		 fysize(80) ///
 		ysize(7) xsize(10) ///
-		name(forest_`ndd', replace) scheme(tab2) title("{bf:`ndd'}", xoffset(0) size(*1.15)) yline(1.5(1)10, lc(gray%15))
+		name(forest_`ndd', replace) scheme(tab2) title("{bf:`ndd'}", xoffset(0) size(*1.15)) yline(1.5(1)11, lc(gray%15))
 
 }
 
@@ -411,9 +426,15 @@ foreach ndd in "ASD" "ID" "ADHD" {
 	drop if _merge == 2 
 	keep if inlist(country, "Combined")
 
-	sort ASM_n
+	insobs 1, before(4)
+	replace adj_HR = 1 if _n ==4 
+	replace adj_HRlci = 1 if _n ==4 
+	replace adj_HRuci = 1 if _n ==4 
+	replace ASM = "{bf:Lamotrigine}" if _n == 4
+	replace country = "Combined" if _n == 4	
 	drop ASM_n
 	sencode ASM, gen(ASM_n)
+	
 	sencode country, gen(country_n)
 	sort ASM_n country_n 
 	order ASM country_n 
@@ -427,7 +448,8 @@ foreach ndd in "ASD" "ID" "ADHD" {
 	expand 2 if country_n == 3, gen(expanded2)
 
 	* add character versions of numeric variables - added as not available for combined 
-	gen adj_HR_str = "" + strofreal(adj_HR,"%5.2f") + "" if adj_HR != . 
+	gen adj_HR_str = "" + strofreal(adj_HR,"%5.2f") + "" if adj_HR != .
+	replace adj_HR_str =  "" + strofreal(adj_HR,"%5.2f") + " (Reference)" if ASM_n == 4 & adj_HR != . 	
 	gen wgt_str = strofreal(100*wgt, "%5.1f") + "%"  if wgt !=.			   
 
 	* Remove data for additional rows or where estimate not possible
@@ -488,16 +510,16 @@ foreach ndd in "ASD" "ID" "ADHD" {
 		, ///
 		xline(1, lp(-) lcol(gray))  											///
 		xscale(log  range(0.18 8)) ///		
-		xlab(0.2 "0.2" 0.5 "0.5" 1 2 5, nogrid labsize(2.5) format(%9.1f) tlength(0.8)) ///
+		xlab(0.2 "0.2" 0.5 "0.5" 1 2 5 , nogrid labsize(2.5) format(%9.1f) tlength(0.8)) ///
 		xtitle("HR (95%CI)", size(2.5))  ///
-		ylab(none) ytitle("") yscale(lcolor(none) range(.5 11))	///
+		ylab(none) ytitle("") yscale(lcolor(none) range(.5 12))	///
 		graphregion(color(white) margin(zero) lcolor(black) lwidth(zero) fcolor(none))  ///
 		plotregion(margin(none) lcolor(black) lwidth(zero) fcolor(none)) ///
 		legend(off) ///
 		 fxsize(150) ///
 		 fysize(80) ///
 		ysize(7) xsize(10) ///
-		name(forest_`ndd', replace) scheme(tab2) title("{bf:`ndd'}", xoffset(0) size(*1.15)) yline(1.5(1)10, lc(gray%15))
+		name(forest_`ndd', replace) scheme(tab2) title("{bf:`ndd'}", xoffset(0) size(*1.15)) yline(1.5(1)11, lc(gray%15))
 
 }
 
@@ -577,6 +599,7 @@ foreach ndd in "ASD" "ID" "ADHD" {
 
 	sort ASM_n
 	drop ASM_n
+	replace ASM = "{bf:No ASM}" if ASM == "{bf:No ASM exposure}"
 	sencode ASM, gen(ASM_n)
 	sencode country, gen(country_n)
 	sort ASM_n country_n 
@@ -584,6 +607,7 @@ foreach ndd in "ASD" "ID" "ADHD" {
 
 	keep ASM* country* NDD adj_HR* wgt str_HR_CI 
 
+	replace country = "Reference" if ASM_n == 1
 
 	* Add additional rows
 	gen obsorder = _n
@@ -635,7 +659,7 @@ foreach ndd in "ASD" "ID" "ADHD" {
 	save "$Datadir\NDD_study_PMD\Outputs\Causal_inference\graphready_allcountries_`ndd'.dta", replace
 	restore 
 
-	replace adj_HRuci = 50 if adj_HRuci> 50
+	replace adj_HRuci = 50 if adj_HRuci> 50 & adj_HRuci != . 
 	replace adj_HRlci = round(.1, .1) if adj_HRlci<.1
 
 	replace country = "UK" if country=="CPRD (UK)"
@@ -747,6 +771,9 @@ foreach ndd in "ASD" "ID" "ADHD" {
 	order ASM country_n 
 
 	keep ASM* country* NDD adj_HR* wgt str_HR_CI 
+	
+	drop if ASM_n == 4 & country == "DOHAD (SWE)"
+	replace country = "Reference" if ASM_n == 4
 
 
 	* Add additional rows
@@ -799,7 +826,7 @@ foreach ndd in "ASD" "ID" "ADHD" {
 	save "$Datadir\NDD_study_PMD\Outputs\Primary\graphready_`ndd'_active_comp.dta", replace
 	restore 
 
-	replace adj_HRuci = 8 if adj_HRuci>8
+	replace adj_HRuci = 8 if adj_HRuci>8 & adj_HRuci != . 
 	replace adj_HRlci = .125 if adj_HRlci<.125
 
 	replace country = "UK" if country=="CPRD (UK)"
