@@ -1,0 +1,4 @@
+We identified a minor coding issue in the Swedish scripts during revision 2. 
+Specifically, when transitioning from the stpm3 to stpm2 package during revisions aimed at optimizing computation time, we inadvertently overlooked a key difference: stpm2 does not automatically apply certain corrections for omitted or difficult-to-estimate parameters, because it was developed back before such things were automated. Upon recognizing this, we re-estimated the affected results. 
+
+The old scripts are kept in the archive folder while the updated scripts with new titles are kept in this folder. 
